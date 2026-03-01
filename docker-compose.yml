@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0.45
+    container_name: agentGeneric-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: company_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - agentGeneric-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentGeneric-app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/company_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: pass
+      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - agentGeneric-network
+    restart: on-failure
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: agentGeneric-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - agentGeneric-network
+
+volumes:
+  mysql-data:
+  ollama-data:
+
+networks:
+  agentGeneric-network:
+    driver: bridge
+
